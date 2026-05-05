@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Finke Hof Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <style>
+        :root { --primary: #2e7d32; --secondary: #1565c0; --accent: #ef6c00; --dark: #263238; --bg: #f0f2f5; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h1 { text-align: center; color: var(--primary); font-size: 1.4rem; margin-bottom: 20px; }
+        h2 { margin-top: 0; font-size: 1.2rem; color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        .nav-btn { width: 100%; height: 60px; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; color: white; cursor: pointer; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-u { background: linear-gradient(135deg, #4caf50, #2e7d32); }
+        .btn-r { background: linear-gradient(135deg, #2196f3, #1565c0); }
+        .btn-k { background: linear-gradient(135deg, #ff9800, #ef6c00); }
+        .btn-z { background: linear-gradient(135deg, #9c27b0, #6a1b9a); }
+        .btn-w { background: linear-gradient(135deg, #607d8b, #37474f); }
+        
+        .btn-back { background: #e0e0e0; color: #333; height: 45px; border-radius: 10px; border: none; width: 100%; margin-bottom: 15px; font-weight: bold; }
+        label { display: block; margin-top: 15px; font-weight: bold; font-size: 0.85rem; color: #666; text-transform: uppercase; }
+        select, input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 10px; font-size: 1rem; box-sizing: border-box; background: #fafafa; }
+        
+        .checkbox-group { background: #f9f9f9; padding: 10px; border: 1px solid #ddd; border-radius: 10px; margin-top: 8px; max-height: 150px; overflow-y: auto; }
+        .checkbox-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
+        
+        .sig-container { border: 2px solid #eee; margin-top: 10px; border-radius: 12px; background: #fff; position: relative; }
+        canvas { width: 100%; height: 180px; display: block; touch-action: none; border-radius: 12px; }
+        .sig-clear { position: absolute; bottom: 8px; right: 8px; background: #f5f5f5; border: 1px solid #ccc; padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; }
+        
+        .submit-btn { width: 100%; padding: 18px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; color: white; margin-top: 25px; cursor: pointer; }
+        
+        #loader { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <p style="margin-top:20px; font-weight:bold; color:#2e7d32;">Finke Hof Daten laden...</p>
+</div>
+
+<div class="container">
+    <div id="view-home">
+        <h1>🚜 Finke Hof Cloud</h1>
+        <button class="nav-btn btn-u" onclick="showView('view-u')">📝 Unterweisung</button>
+        <button class="nav-btn btn-r" onclick="showView('view-r')">🧼 Reinigung</button>
+        <button class="nav-btn btn-k" onclick="showView('view-k')">❄️ Kühlhauskontrolle</button>
+        <button class="nav-btn btn-z" onclick="showView('view-z')">⏱ Arbeitszeit</button>
+        <button class="nav-btn btn-w" onclick="showView('view-w')">🔧 TÜV / UVV Eintrag</button>
+    </div>
+
+    <!-- WARTUNG VIEW -->
+    <div id="view-w" class="hidden">
+        <button class="btn-back" onclick="showView('view-home')">⬅ Zurück</button>
+        <div class="card">
+            <h2>🔧 TÜV / UVV Wartung</h2>
+            <label>Maschine</label><select id="w-machine"></select>
+            <label>Prüfungsart</label>
+            <select id="w-art">
+                <option value="TÜV">TÜV / HU</option>
+                <option value="UVV">UVV-Prüfung</option>
+            </select>
+            <label>Prüfdatum</label><input type="date" id="w-date">
+            <label>Mitarbeiter</label><select id="w-worker"></select>
+            <label>Bemerkung</label><input type="text" id="w-note" placeholder="Ohne Mängel">
+            <div class="sig-container">
+                <canvas id="pad-w"></canvas>
+                <button class="sig-clear" onclick="pads.w.clear()">Leeren</button>
+            </div>
+            <button class="submit-btn btn-w" id="btn-w" onclick="send('W')">PRÜFUNG SPEICHERN</button>
+        </div>
+    </div>
+
+    <!-- ARBEITSZEIT VIEW -->
+    <div id="view-z" class="hidden">
+        <button class="btn-back" onclick="showView('view-home')">⬅ Zurück</button>
+        <div class="card">
+            <h2>⏱ Arbeitszeit</h2>
+            <label>Datum</label><input type="date" id="z-date">
+            <label>Mitarbeiter</label><select id="z-worker"></select>
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;"><label>Start</label><input type="time" id="z-begin"></div>
+                <div style="flex:1;"><label>Ende</label><input type="time" id="z-end"></div>
+            </div>
+            <label>Pause (Min)</label><input type="number" id="z-pause" value="30">
+            <div class="sig-container">
+                <canvas id="pad-z"></canvas>
+                <button class="sig-clear" onclick="pads.z.clear()">Leeren</button>
+            </div>
+            <button class="submit-btn btn-z" id="btn-z" onclick="send('Z')">ZEIT SPEICHERN</button>
+        </div>
+    </div>
+
+    <!-- UNTERWEISUNG, REINIGUNG, KÜHLHAUS VIEWS -->
+    <div id="view-u" class="hidden"><button class="btn-back" onclick="showView('view-home')">⬅ Zurück</button><div class="card"><h2>📝 Unterweisung</h2><label>Gruppe</label><select id="u-group"></select><label>Themen</label><div id="u-bases" class="checkbox-group"></div><label>Unterweiser</label><select id="u-instructor"></select><label>Mitarbeiter</label><select id="u-worker"></select><div class="sig-container"><canvas id="pad-u"></canvas><button class="sig-clear" onclick="pads.u.clear()">Leeren</button></div><button class="submit-btn btn-u" id="btn-u" onclick="send('U')">SPEICHERN</button></div></div>
+    <div id="view-r" class="hidden"><button class="btn-back" onclick="showView('view-home')">⬅ Zurück</button><div class="card"><h2>🧼 Reinigung</h2><label>Bereiche</label><div id="r-areas" class="checkbox-group"></div><label>Methoden</label><div id="r-methods" class="checkbox-group"></div><label>Mitarbeiter</label><select id="r-worker"></select><div class="sig-container"><canvas id="pad-r"></canvas><button class="sig-clear" onclick="pads.r.clear()">Leeren</button></div><button class="submit-btn btn-r" id="btn-r" onclick="send('R')">SPEICHERN</button></div></div>
+    <div id="view-k" class="hidden"><button class="btn-back" onclick="showView('view-home')">⬅ Zurück</button><div class="card"><h2>❄️ Kühlhaus</h2><label>Haus</label><select id="k-haus"></select><label>Temp °C</label><input type="number" step="0.1" id="k-temp"><label>Status</label><select id="k-status"><option value="OK">OK</option><option value="Abweichung">Abweichung</option></select><label>Mitarbeiter</label><select id="k-worker"></select><div class="sig-container"><canvas id="pad-k"></canvas><button class="sig-clear" onclick="pads.k.clear()">Leeren</button></div><button class="submit-btn btn-k" id="btn-k" onclick="send('K')">SPEICHERN</button></div></div>
+</div>
+
+<script>
+    // DEINE URL WURDE HIER EINGEFÜGT
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzjFmNmjRS2BbxUul9cuQU2cEl_HS2CSFKWeHEE_vkmBmc0iiGEZXdRud6G0j270Dsw/exec"; 
+    let pads = {};
+
+    function showView(id) {
+        document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+        resizeCanvas();
+    }
+
+    async function init() {
+        try {
+            const response = await fetch(WEB_APP_URL);
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+
+            fillSelect('u-group', data.groups);
+            fillSelect('u-instructor', data.persons);
+            fillSelect('u-worker', data.workers);
+            fillSelect('r-worker', data.workers);
+            fillSelect('k-worker', data.workers);
+            fillSelect('z-worker', data.workers);
+            fillSelect('w-worker', data.workers);
+            fillSelect('k-haus', data.coolingHouses);
+            fillSelect('w-machine', data.machines);
+            fillChecks('u-bases', 'u-base', data.bases);
+            fillChecks('r-areas', 'r-area', data.areas);
+            fillChecks('r-methods', 'r-meth', data.methods);
+
+            document.getElementById('loader').style.display = 'none';
+        } catch (e) {
+            document.getElementById('loader').innerHTML = "<b>Fehler beim Laden!</b><br>Bitte prüfe Internet und Freigabe.<br><small>" + e.message + "</small>";
+        }
+    }
+
+    function fillSelect(id, list) {
+        const s = document.getElementById(id); if(!s) return;
+        s.innerHTML = '<option value="">-- wählen --</option>';
+        list.forEach(i => s.innerHTML += `<option value="${i}">${i}</option>`);
+    }
+
+    function fillChecks(id, name, list) {
+        const c = document.getElementById(id); if(!c) return;
+        c.innerHTML = "";
+        list.forEach(i => c.innerHTML += `<div class="checkbox-item"><input type="checkbox" name="${name}" value="${i}"><span> ${i}</span></div>`);
+    }
+
+    async function send(mode) {
+        const btn = document.getElementById('btn-' + mode.toLowerCase());
+        btn.disabled = true; btn.innerText = "⏳ Speichere...";
+        
+        let payload = { type: "" };
+        const sig = pads[mode.toLowerCase()].toDataURL();
+
+        if (mode === 'W') {
+            payload = { type: "WARTUNG", maschine: document.getElementById('w-machine').value, pruefungsart: document.getElementById('w-art').value, datum: document.getElementById('w-date').value, mitarbeiter: document.getElementById('w-worker').value, bemerkung: document.getElementById('w-note').value, unterschrift: sig };
+        } else if (mode === 'Z') {
+            payload = { type: "ARBEITSZEIT", datum: document.getElementById('z-date').value, mitarbeiter: document.getElementById('z-worker').value, beginn: document.getElementById('z-begin').value, ende: document.getElementById('z-end').value, pause: document.getElementById('z-pause').value, unterschrift: sig };
+        } else if (mode === 'K') {
+            payload = { type: "KUEHLHAUS", haus: document.getElementById('k-haus').value, temp: document.getElementById('k-temp').value, status: document.getElementById('k-status').value, mitarbeiter: document.getElementById('k-worker').value, unterschrift: sig };
+        } else if (mode === 'R') {
+            const b = Array.from(document.querySelectorAll('input[name="r-area"]:checked')).map(c => c.value).join(", ");
+            const m = Array.from(document.querySelectorAll('input[name="r-meth"]:checked')).map(c => c.value).join(", ");
+            payload = { type: "REINIGUNG", bereiche: b, methoden: m, mitarbeiter: document.getElementById('r-worker').value, unterschrift: sig };
+        } else if (mode === 'U') {
+            const g = Array.from(document.querySelectorAll('input[name="u-base"]:checked')).map(c => c.value).join(", ");
+            payload = { type: "UNTERWEISUNG", gruppe: document.getElementById('u-group').value, grundlage: g, unterweiser: document.getElementById('u-instructor').value, mitarbeiter: document.getElementById('u-worker').value, unterschrift: sig };
+        }
+
+        try {
+            await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
+            alert("✅ Erfolgreich gespeichert!");
+            location.reload();
+        } catch (e) {
+            alert("Fehler!");
+            btn.disabled = false; btn.innerText = "SPEICHERN";
+        }
+    }
+
+    function resizeCanvas() {
+        Object.values(pads).forEach(p => {
+            const c = p.canvas; const r = Math.max(window.devicePixelRatio || 1, 1);
+            c.width = c.offsetWidth * r; c.height = c.offsetHeight * r;
+            c.getContext("2d").scale(r, r); p.clear();
+        });
+    }
+
+    window.onload = () => {
+        ['u', 'r', 'k', 'z', 'w'].forEach(k => {
+            const c = document.getElementById('pad-' + k);
+            if(c) pads[k] = new SignaturePad(c, { backgroundColor: 'rgb(255, 255, 255)' });
+        });
+        const today = new Date().toISOString().split('T')[0];
+        if(document.getElementById('z-date')) document.getElementById('z-date').value = today;
+        if(document.getElementById('w-date')) document.getElementById('w-date').value = today;
+        init();
+        window.onresize = resizeCanvas;
+    };
+</script>
+</body>
+</html>
