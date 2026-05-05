@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Finke Hof Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <style>
+        :root { --primary: #2e7d32; --secondary: #1565c0; --bg: #f0f2f5; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1 { text-align: center; color: #1b5e20; font-size: 1.3rem; }
+        .nav-btn { width: 100%; height: 70px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; color: white; cursor: pointer; margin-bottom: 15px; }
+        .btn-u { background: linear-gradient(135deg, #43a047, #2e7d32); }
+        .btn-r { background: linear-gradient(135deg, #1e88e5, #1565c0); }
+        .btn-back { background: #ccc; color: #333; height: 40px; font-size: 0.8rem; margin-bottom: 10px; border-radius: 8px; border: none; width: 100%; }
+        label { display: block; margin-top: 15px; font-weight: bold; font-size: 0.85rem; color: #666; }
+        select, input[type="date"] { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 10px; font-size: 1rem; }
+        .checkbox-group { background: #f9f9f9; padding: 5px 12px; border: 1px solid #ddd; border-radius: 10px; margin-top: 8px; max-height: 180px; overflow-y: auto; }
+        .checkbox-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .checkbox-item input { width: 22px; height: 22px; margin-right: 12px; }
+        .sig-container { border: 2px solid #eee; margin-top: 10px; border-radius: 12px; background: #fff; position: relative; }
+        canvas { width: 100%; height: 200px; display: block; touch-action: none; border-radius: 12px; }
+        .sig-clear { position: absolute; bottom: 8px; right: 8px; background: #eee; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.7rem; }
+        .submit-btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; color: white; margin-top: 20px; cursor: pointer; }
+        .btn-save-u { background: var(--primary); }
+        .btn-save-r { background: var(--secondary); }
+        #loader { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <p style="margin-top: 15px; font-weight: bold;">Daten werden aus 'Datengrundlage' geladen...</p>
+</div>
+
+<div class="container">
+    <div id="view-home">
+        <h1>🚜 Finke Hof Management</h1>
+        <button class="nav-btn btn-u" onclick="showView('view-u')">📝 Unterweisung</button>
+        <button class="nav-btn btn-r" onclick="showView('view-r')">🧼 Reinigung</button>
+    </div>
+
+    <div id="view-u" class="hidden">
+        <button class="btn-back" onclick="showView('view-home')">⬅ Zurück</button>
+        <div class="card">
+            <h2>📝 Unterweisung</h2>
+            <label>Gruppe</label><select id="u-group"></select>
+            <label>Themen</label><div id="u-bases" class="checkbox-group"></div>
+            <label>Unterweiser</label><select id="u-instructor"></select>
+            <label>Mitarbeiter</label><select id="u-worker"></select>
+            <div class="sig-container">
+                <canvas id="pad-u"></canvas>
+                <button class="sig-clear" onclick="padU.clear()">Leeren</button>
+            </div>
+            <button class="submit-btn btn-save-u" id="btn-u" onclick="send('U')">SPEICHERN</button>
+        </div>
+    </div>
+
+    <div id="view-r" class="hidden">
+        <button class="btn-back" onclick="showView('view-home')">⬅ Zurück</button>
+        <div class="card">
+            <h2>🧼 Reinigung</h2>
+            <label>Bereiche</label><div id="r-areas" class="checkbox-group"></div>
+            <label>Methoden</label><div id="r-methods" class="checkbox-group"></div>
+            <label>Mitarbeiter</label><select id="r-worker"></select>
+            <div class="sig-container">
+                <canvas id="pad-r"></canvas>
+                <button class="sig-clear" onclick="padR.clear()">Leeren</button>
+            </div>
+            <button class="submit-btn btn-save-r" id="btn-r" onclick="send('R')">SPEICHERN</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx1QZJ14IrXtCh4QOJVvlsEuebqvOwLCCKa7jU7-FieiyU5YJ9mcrIsJDYuarRd2WNS/exec";
+    let padU, padR;
+
+    function showView(viewId) {
+        document.getElementById('view-home').classList.add('hidden');
+        document.getElementById('view-u').classList.add('hidden');
+        document.getElementById('view-r').classList.add('hidden');
+        document.getElementById(viewId).classList.remove('hidden');
+        setTimeout(resize, 100);
+    }
+
+    async function init() {
+        try {
+            const resp = await fetch(WEB_APP_URL + "?t=" + Date.now());
+            const data = await resp.json();
+            if(data.error) throw new Error(data.error);
+
+            fillSelect('u-group', data.groups);
+            fillSelect('u-instructor', data.persons);
+            fillSelect('u-worker', data.workers);
+            fillSelect('r-worker', data.workers);
+            
+            fillChecks('u-bases', 'u-base', data.bases);
+            fillChecks('r-areas', 'r-area', data.areas);
+            fillChecks('r-methods', 'r-meth', data.methods);
+
+            document.getElementById('loader').style.display = 'none';
+        } catch (e) { alert("Fehler: " + e.message); }
+    }
+
+    function fillSelect(id, list) {
+        const s = document.getElementById(id);
+        s.innerHTML = '<option value="">-- wählen --</option>';
+        list.sort().forEach(i => s.innerHTML += `<option value="${i}">${i}</option>`);
+    }
+
+    function fillChecks(containerId, name, list) {
+        const div = document.getElementById(containerId);
+        div.innerHTML = "";
+        list.sort().forEach(item => {
+            if(item) div.innerHTML += `<div class="checkbox-item"><input type="checkbox" name="${name}" value="${item}"><span>${item}</span></div>`;
+        });
+    }
+
+    async function send(mode) {
+        const btn = document.getElementById(mode === 'U' ? 'btn-u' : 'btn-r');
+        let payload = { type: mode === 'U' ? "UNTERWEISUNG" : "REINIGUNG" };
+
+        if (mode === 'U') {
+            const bases = Array.from(document.querySelectorAll('input[name="u-base"]:checked')).map(c => c.value);
+            if(!document.getElementById('u-worker').value || padU.isEmpty() || bases.length === 0) return alert("Unvollständig!");
+            payload = {...payload, gruppe: document.getElementById('u-group').value, grundlage: bases, unterweiser: document.getElementById('u-instructor').value, mitarbeiter: document.getElementById('u-worker').value, unterschrift: padU.toDataURL()};
+        } else {
+            const areas = Array.from(document.querySelectorAll('input[name="r-area"]:checked')).map(c => c.value);
+            const meths = Array.from(document.querySelectorAll('input[name="r-meth"]:checked')).map(c => c.value);
+            if(!document.getElementById('r-worker').value || padR.isEmpty() || areas.length === 0 || meths.length === 0) return alert("Unvollständig!");
+            payload = {...payload, bereiche: areas, methoden: meths, mitarbeiter: document.getElementById('r-worker').value, unterschrift: padR.toDataURL()};
+        }
+
+        btn.disabled = true;
+        btn.innerText = "⏳ Speichert...";
+
+        try {
+            await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
+            alert("✅ Gespeichert!");
+            location.reload();
+        } catch (e) { alert("Fehler!"); btn.disabled = false; }
+    }
+
+    function resize() {
+        [padU, padR].forEach(p => {
+            if(p) {
+                const c = p.canvas;
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                c.width = c.offsetWidth * ratio;
+                c.height = c.offsetHeight * ratio;
+                c.getContext("2d").scale(ratio, ratio);
+                p.clear();
+            }
+        });
+    }
+
+    window.onload = () => {
+        padU = new SignaturePad(document.getElementById('pad-u'), {backgroundColor: 'rgb(255, 255, 255)'});
+        padR = new SignaturePad(document.getElementById('pad-r'), {backgroundColor: 'rgb(255, 255, 255)'});
+        init();
+        window.onresize = resize;
+    };
+</script>
+</body>
+</html>
